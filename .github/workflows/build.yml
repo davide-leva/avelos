@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "Avelos: a personal bootc desktop based on Bazzite, with Niri and Dank Material Shell"
-  IMAGE_KEYWORDS: "avelos,bootc,ublue,bazzite,niri,dms,nvidia"
+  IMAGE_DESC: "Avelos: a personal bootc desktop based on Bazzite, with MangoWM and Noctalia"
+  IMAGE_KEYWORDS: "avelos,bootc,ublue,bazzite,mangowm,noctalia,intel,amd"
   IMAGE_LOGO_URL: "https://github.com/${{ github.repository_owner }}.png"
   IMAGE_NAME: "${{ github.event.repository.name }}"  # output image name, usually same as repo name
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit

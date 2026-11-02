@@ -1,0 +1,9 @@
+[Unit]
+Description=Initialize Noctalia Greeter persistent state
+After=systemd-tmpfiles-setup.service
+Before=greetd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/noctalia-greeter-apply-appearance --setup-system
+RemainAfterExit=yes

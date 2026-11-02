@@ -2,9 +2,8 @@
 
 set -ouex pipefail
 
-# dnf -y remove gnome-shell 
-# dnf -y install pipewire xdg-desktop-portal-wlr
-dnf -y install xdg-desktop-portal-wlr
+# Wayland portals and screen-sharing picker
+dnf -y install xdg-desktop-portal-wlr xdg-desktop-portal-gtk slurp
 
 ## DNF5 Speedup
 sed -i '/^\[main\]/a max_parallel_downloads=10' /etc/dnf/dnf.conf
@@ -16,7 +15,7 @@ dnf -y install libvirt virt-manager qemu-kvm flatpak-builder wlr-randr iotop sys
 dnf -y install nautilus kitty mpv gnome-terminal gnome-system-monitor gnome-calculator loupe 
 
 # OBS and fully-featured ffmpeg with nonfree components from rpm fusion
-dnf -y install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+dnf -y install "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
 # dnf -y install ffmpeg x264-libs obs-studio obs-studio-plugin-x264 libva-utils --allowerasing
 dnf -y swap ffmpeg-free ffmpeg --allowerasing
 dnf -y install ffmpeg-devel x264-libs obs-studio obs-studio-plugin-x264 libva-utils
@@ -46,47 +45,54 @@ systemctl enable opensnitch.service
 
 # Nautilus open any terminal extension
 curl -Lo /etc/yum.repos.d/nautilus-open-any-terminal.repo \
-  https://copr.fedorainfracloud.org/coprs/monkeygold/nautilus-open-any-terminal/repo/fedora-$(rpm -E %fedora)/monkeygold-nautilus-open-any-terminal-fedora-$(rpm -E %fedora).repo
+  "https://copr.fedorainfracloud.org/coprs/monkeygold/nautilus-open-any-terminal/repo/fedora-$(rpm -E %fedora)/monkeygold-nautilus-open-any-terminal-fedora-$(rpm -E %fedora).repo"
 # dnf install -y nautilus-open-any-terminal
 # glib-compile-schemas /usr/share/glib-2.0/schemas
 # gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal kitty
 
 
-# Install Niri 
-dnf -y install niri
+# Intel/AMD integrated graphics: use the Mesa stack from the non-NVIDIA base.
+dnf -y install mesa-dri-drivers mesa-vulkan-drivers
 
-curl -Lo /etc/yum.repos.d/peterwu.repo \
-  https://copr.fedorainfracloud.org/coprs/peterwu/rendezvous/repo/fedora-$(rpm -E %fedora)/peterwu-rendezvous-fedora-$(rpm -E %fedora).repo
+# MangoWM and Noctalia Greeter are packaged by Terra.
+# Bazzite includes terra-release but disables the main Terra repository.
+if ! rpm -q terra-release >/dev/null 2>&1; then
+  dnf -y install --nogpgcheck --repofrompath "terra,https://repos.fyralabs.com/terra\$releasever" terra-release
+fi
+dnf -y --enable-repo=terra install mangowm noctalia-greeter
+dnf -y install noctalia greetd dbus-daemon
+
+curl -fLo /etc/yum.repos.d/peterwu.repo \
+  "https://copr.fedorainfracloud.org/coprs/peterwu/rendezvous/repo/fedora-$(rpm -E %fedora)/peterwu-rendezvous-fedora-$(rpm -E %fedora).repo"
 dnf -y install bibata-cursor-themes
 
-# # Install Noctalia shell
-# curl -fsSL https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo -o /etc/yum.repos.d/terra.repo
-# dnf -y install terra-release
-# dnf -y install noctalia-shell 
-# # ABILITARE LE NOTIFICHE: systemctl --user enable --now swaync.service
+# System fallback also covers existing users without a Mango configuration.
+install -Dm644 /ctx/dot_config/mango/config.conf /etc/mango/config.conf
+install -Dm644 /ctx/dot_config/mango/config.conf /etc/skel/.config/mango/config.conf
+install -Dm644 /ctx/dot_config/xdg-desktop-portal/mango-portals.conf \
+  /etc/xdg/xdg-desktop-portal/mango-portals.conf
 
-# Install Dank Linux shell
-curl --output-dir "/etc/yum.repos.d/" \
-  --remote-name "https://copr.fedorainfracloud.org/coprs/avengemedia/dms/repo/fedora-$(rpm -E %fedora)/avengemedia-dms-fedora-$(rpm -E %fedora).repo"
-dnf -y install quickshell dms greetd dms-greeter --allowerasing 
-#
-# Install greetd login manager with dank configuration (still needs some work)
-mkdir -p /etc/greetd/
-cat > /etc/greetd/config.toml << EOF
-[terminal]
-vt = 1
-[default_session]
-user = "greeter"
-command = "dms-greeter --command niri"
+# Fail the build if the installed compositor cannot parse our configuration.
+mango -c /etc/mango/config.conf -p
+
+# greetd runs the greeter's session wrapper; Mango is selected at login.
+install -Dm644 /ctx/greetd/config.toml /etc/greetd/config.toml
+test -x /usr/bin/noctalia-greeter-session
+test -x /usr/bin/noctalia-greeter-apply-appearance
+test -f /usr/share/wayland-sessions/mango.desktop
+
+# /var is persistent state in bootc: initialize it on the installed system.
+install -Dm644 /ctx/systemd/avelos-greeter-setup.service \
+  /usr/lib/systemd/system/avelos-greeter-setup.service
+mkdir -p /etc/systemd/system/greetd.service.d
+cat > /etc/systemd/system/greetd.service.d/avelos.conf << 'EOF'
+[Unit]
+Requires=avelos-greeter-setup.service
+After=avelos-greeter-setup.service
 EOF
+systemctl disable gdm.service
 rm -f /etc/systemd/system/display-manager.service
-ln -s /usr/lib/systemd/system/greetd.service /etc/systemd/system/display-manager.service
 systemctl enable --force greetd.service
-
-mkdir -p /etc/skel/.config/systemd/user/graphical-session.target.wants
-ln -s /usr/lib/systemd/user/dms.service /etc/skel/.config/systemd/user/graphical-session.target.wants/
-mkdir -p /etc/skel/.config/niri/
-cp -rf /ctx/dot_config/niri/config.kdl /etc/skel/.config/niri/
 
 # DEV packages
 # cargo evtest git input-remapper libevdev-devel libinput-utils python3-devel
@@ -102,12 +108,6 @@ dnf -y remove waybar
 
 # this is needed for some glib applications
 glib-compile-schemas /usr/share/glib-2.0/schemas/
-
-
-# NVIDIA Container Toolkit (repo ufficiale)
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo \
-  -o /etc/yum.repos.d/nvidia-container-toolkit.repo
-dnf -y install nvidia-container-toolkit
 
 
 ## CLEAN UP

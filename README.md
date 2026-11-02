@@ -4,15 +4,23 @@ Avelos è la mia immagine desktop Linux personale, mantenuta da [davide-leva](ht
 
 ## Desktop e software
 
-La configurazione attuale usa `ghcr.io/ublue-os/bazzite-gnome-nvidia:stable` come base e aggiunge:
+La configurazione attuale usa `ghcr.io/ublue-os/bazzite-gnome:stable` come base e aggiunge:
 
-- Niri come compositor Wayland, Dank Material Shell e il login manager greetd con dms-greeter.
-- Driver e strumenti della base NVIDIA, con NVIDIA Container Toolkit aggiunto dalla build.
+- MangoWM come compositor Wayland, Noctalia v5 e il login manager greetd con noctalia-greeter.
+- Stack grafico Mesa per GPU integrate Intel e AMD, senza la variante NVIDIA della base né NVIDIA Container Toolkit.
 - Homebrew, strumenti di sviluppo e container, QEMU/KVM e virt-manager.
 - Applicazioni desktop come Kitty, Nautilus, mpv e OBS Studio.
 - OpenSnitch come firewall applicativo.
 
-Le impostazioni Niri vengono copiate in `/etc/skel/.config/niri`: sono i valori iniziali per i nuovi utenti. Le configurazioni Kitty presenti nel repository non vengono ancora installate dalla build.
+MangoWM e noctalia-greeter vengono installati dal repository Terra; Noctalia dal repository Fedora. greetd avvia `/usr/bin/noctalia-greeter-session`: nella schermata di accesso selezionare **Mango**. Noctalia parte automaticamente con la sessione.
+
+La configurazione Mango viene installata sia in `/etc/mango/config.conf` (fallback di sistema) sia in `/etc/skel/.config/mango/config.conf` (nuovi utenti). Gli utenti esistenti possono copiarla in `~/.config/mango/config.conf`; eventuali configurazioni personali già presenti hanno precedenza. Non sono fissati nomi di monitor o dispositivi GPU, così la stessa immagine può essere usata sulle due macchine. Il layout tastiera iniziale è `us` e si modifica con `xkb_rules_layout`.
+
+Scorciatoie iniziali: `Super+Invio` apre Kitty, `Super+Spazio` il launcher Noctalia, `Super+E` Nautilus, `Super+Q` chiude la finestra e `Super+1…9` cambia workspace. `Super+Shift+R` ricarica la configurazione, `Super+Shift+M` termina la sessione.
+
+I portali GTK e wlroots gestiscono selezione file e condivisione schermo; Slurp permette di selezionare lo schermo da condividere. Lo stato persistente del greeter viene inizializzato all'avvio, prima di greetd, da `avelos-greeter-setup.service`.
+
+Le configurazioni Kitty presenti nel repository non vengono ancora installate dalla build.
 
 ## Build locale
 
@@ -63,7 +71,14 @@ Dopo aver pubblicato l'immagine, su un sistema compatibile con bootc:
 sudo bootc switch ghcr.io/davide-leva/avelos:latest
 ```
 
-Riavviare per applicare il cambio. La configurazione attuale è pensata per hardware NVIDIA.
+Riavviare per applicare il cambio. La configurazione è pensata per macchine x86_64 con grafica integrata Intel o AMD.
+
+## Riferimenti del desktop
+
+- [Installazione MangoWM](https://mangowm.github.io/docs/installation/)
+- [Installazione Noctalia](https://docs.noctalia.dev/noctalia/getting-started/installation/)
+- [Integrazione Noctalia con Mango](https://docs.noctalia.dev/noctalia/compositor-settings/mango/)
+- [Configurazione noctalia-greeter](https://docs.noctalia.dev/greeter/installation/)
 
 ## Personalizzazione
 
